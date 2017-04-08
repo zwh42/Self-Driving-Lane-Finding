@@ -1,9 +1,4 @@
-##Writeup Template
-###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
----
-
-**Advanced Lane Finding Project**
+# **Self Driving: Advanced Lane Finding**
 
 The goals / steps of this project are the following:
 
@@ -16,106 +11,102 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-[//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
 
-## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
-###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
----
-###Writeup / README
 
-####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
+**NOTE:** All code mentioned below can be found in this [Jupyter notebook](./FlowSetup.ipynb).
 
-You're reading it!
-###Camera Calibration
+## Camera Calibration
 
-####1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+The code for this step is contained in the code cell of *Camera Calibration Using Chessboard Images*. 
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image in the [camera_cal](./camera_cal) folder.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function warped inside the `cal_undistort()` function. and obtained the result as shown below: 
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+![camera_calibration](./resource/camera_calibration_example.png)
 
-![alt text][image1]
+## Pipeline (single images)
 
-###Pipeline (single images)
+####1.Image Distortion Correction.
+Distortion correction is applied to the test images using the same method of the camera calibration part. A example is shown as below:  
+![undistorted_example](./resource/undistorted_example.png)
 
-####1. Provide an example of a distortion-corrected image.
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
-####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
 
-![alt text][image3]
+####2.Thresholded Binary Image Creation.
+Thresholded binary image was generated for later lane line finding(code cell *Thresholded Binary Image Creation* in the [Jupyter notebook](./FlowSetup.ipynb)). After some experiment, the original image was transformed into HLS color space, and the gradient along X direction with threshold of (20, 255) in S channel and the magnitude in L channel with threshold of (60, 255) were combined to create the binary image.   Here's an example of the output for this step.  
 
-####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+![binary image example](./resource/binary_image_example.png)
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+
+####3. Perspective Transformation.
+
+The code for perspective transform appeared in the  *Perspective Transform* code cell in the [Jupyter notebook](./FlowSetup.ipynb).  The `lane_line_perspective_transform()` function takes as inputs an image (`image`), as well as source (`src`) and destination (`dst`) points. the source and destination points hard-code as shown below:
 
 ```
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+  
+SRC = np.float32([
+    [590, 450],
+    [700, 450],
+    [380, 600],
+    [900, 580]
+])
+
+DST = np.float32([
+    [380, 100],
+    [900, 100],
+    [380, 600],
+    [900, 580]
+])
 
 ```
-This resulted in the following source and destination points:
 
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+And below is a example of the perspective transformation. In the image on the left, the source points is marked as green dot and the destination points is marked as blue dot. The image on the right is the transformed result. Then  
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+![perspective_transformation](./resource/perspective_transformation.png)
 
-![alt text][image4]
+####4. Detect Lane Pixels and Fit to Find the Lane Boundary
+After distortion correction, thresholded binary image creation and perspective transformation, a "bird-eye" view binary image is prepared.Then a histogram of pixel value along the X-axis of the bottom half image. The underlying assumption is that the two peaks on the left half and the right half are the center of lane lines. Then  I used the sliding windows method to identify the lane line pixel's coordinates. Then these valid X, Y coordinates were fitted by a second order polynomial. The code of this part can be found in the *Search Lane Lines* code block of the [Jupyter notebook](./FlowSetup.ipynb). A example is shown below.        
 
-####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+![fit example](./resource/fit_example.png)
+![fit example](./resource/fit_example_2.png)
 
-![alt text][image5]
 
-####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+####5. Radius of Curvature of the Lane and the Position of the vehicle with Respect to Center Calucation
 
-####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+The radius of the lane is calculated by the equation listed below:  
+![curve equation](./resource/curve_equation.png) 
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+where the derivatives can be easily found from the second order polynomial coefficients fit in the lane line detection part.
+the position of the vehicle with respect to center is calculated by calculating the distance of the image center's X coordinate and the detected lane line center, which is calculated by averaging he left lane and right lane's X coordinate at the image bottom.
 
-![alt text][image6]
+All these calculation's unit is converted to real world's meter(m).The code of this part can be found in the *Search Lane Lines* and *Image Processing Pipe Line* code block of the [Jupyter notebook](./FlowSetup.ipynb). Below is an example of the calculation result as well as a plot of lane area. 
 
----
 
-###Pipeline (video)
+![post](./resource/post.png)   
 
-####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
 
 ---
 
-###Discussion
+## Video Pipeline
 
-####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+Here's a [processed video](./processed_video.mp4) which is processed by the pipe line discussed above.  
+The [challenge video](./processed_challenge_video.mp4) is also processed, but the result was not good. 
+
+---
+
+##Discussion
+
+- From the processed video, we can see that the result is generally OK but not very smooth due to no smoothing method is not considered, which can be improved in the future.
+- the threshold binary image require many experiments with trial and error, and we don't know whether it can work well in other environment, we may need to think how to improve this situation.
+- Preliminary sanity check is added in this pipe line. If the difference of the curvature of two lanes is huge (>1000 m), the lane detection will reset. We can improve the sanity check in the future.
+- From the challenge video result we can see that the current pipeline cannot handle the complex situation, thus its usage is very limited, new robust algorithm is needed.
+ 
+            
+
 
