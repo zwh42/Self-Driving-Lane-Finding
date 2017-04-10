@@ -25,19 +25,19 @@ I start by preparing "object points", which will be the (x, y, z) coordinates of
 
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function warped inside the `cal_undistort()` function. and obtained the result as shown below: 
 
-![camera_calibration](./resource/camera_calibration_example.png)
+![camera_calibration](./output_images/camera_calibration_example.png)
 
 ## Pipeline (single images)
 
 ####1.Image Distortion Correction.
 Distortion correction is applied to the test images using the same method of the camera calibration part. A example is shown as below:  
-![undistorted_example](./resource/undistorted_example.png)
+![undistorted_example](./output_images/undistorted_example.png)
 
 
 ####2.Thresholded Binary Image Creation.
 Thresholded binary image was generated for later lane line finding(code cell *Thresholded Binary Image Creation* in the [Jupyter notebook](./FlowSetup.ipynb)). After some experiment, the original image was transformed into HLS color space, and the gradient along X direction with threshold of (20, 255) in S channel and the magnitude in L channel with threshold of (60, 255) were combined to create the binary image.   Here's an example of the output for this step.  
 
-![binary image example](./resource/binary_image_example.png)
+![binary image example](./output_images/binary_image_example.png)
 
 
 ####3. Perspective Transformation.
@@ -46,39 +46,40 @@ The code for perspective transform appeared in the  *Perspective Transform* code
 
 ```
   
-SRC = np.float32([
-    [590, 450],
-    [700, 450],
-    [380, 600],
-    [900, 580]
-])
+    SRC = np.float32([
+        [590, 450],
+        [700, 450],
+        [380, 600],
+        [900, 580]
 
-DST = np.float32([
-    [380, 100],
-    [900, 100],
-    [380, 600],
-    [900, 580]
-])
+    ])
+
+    DST = np.float32([
+        [360, 0],
+        [920, 0],
+        [380, 600],
+        [900, 580]
+    ])
 
 ```
 
 And below is a example of the perspective transformation. In the image on the left, the source points is marked as green dot and the destination points is marked as blue dot. The image on the right is the transformed result. Then  
 
-![perspective_transformation](./resource/perspective_transformation.png)
+![perspective_transformation](./output_images/perspective_transformation.png)
 
 ####4. Detect Lane Pixels and Fit to Find the Lane Boundary
 After distortion correction, thresholded binary image creation and perspective transformation, a "bird-eye" view binary image is prepared.Then a histogram of pixel value along the X-axis of the bottom half image. The underlying assumption is that the two peaks on the left half and the right half are the center of lane lines. Then  I used the sliding windows method to identify the lane line pixel's coordinates. Then these valid X, Y coordinates were fitted by a second order polynomial. The code of this part can be found in the *Search Lane Lines* code block of the [Jupyter notebook](./FlowSetup.ipynb). A example is shown below.        
 
 
-![fit example](./resource/fit_example.png)
-![fit example](./resource/fit_example_2.png)
+![fit example](./output_images/fit_example.png)
+![fit example](./output_images/fit_example_2.png)
 
 
 
 ####5. Radius of Curvature of the Lane and the Position of the vehicle with Respect to Center Calucation
 
 The radius of the lane is calculated by the equation listed below:  
-![curve equation](./resource/curve_equation.png) 
+![curve equation](./output_images/curve_equation.png) 
 
 where the derivatives can be easily found from the second order polynomial coefficients fit in the lane line detection part.
 the position of the vehicle with respect to center is calculated by calculating the distance of the image center's X coordinate and the detected lane line center, which is calculated by averaging he left lane and right lane's X coordinate at the image bottom.
@@ -86,7 +87,7 @@ the position of the vehicle with respect to center is calculated by calculating 
 All these calculation's unit is converted to real world's meter(m).The code of this part can be found in the *Search Lane Lines* and *Image Processing Pipe Line* code block of the [Jupyter notebook](./FlowSetup.ipynb). Below is an example of the calculation result as well as a plot of lane area. 
 
 
-![post](./resource/post.png)   
+![post](./output_images/post.png)   
 
 
 
